@@ -1604,23 +1604,50 @@ function MedSheet({
       });
   };
   
-  const handlePasteToBulk = (e, startIndex, field) => {
+ const handlePasteToBulk = (e, startIndex, field) => {
       e.preventDefault();
       const pasteData = e.clipboardData.getData('text');
       if (!pasteData) return;
-      const pastedRows = pasteData.split(/\r?\n/).filter(row => row.trim() !== '');
+
+      // 1. แยกบรรทัดและกรองบรรทัดว่างทิ้ง
+      const lines = pasteData.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '');
       const newData = [...bulkFormData];
       let currentIndex = startIndex;
-      pastedRows.forEach(rowText => {
-          if (currentIndex < 10) {
-              const cols = rowText.split('\t');
-              if (field === 'name') {
-                  newData[currentIndex].name = cols[0]?.trim() || '';
-                  if (cols.length > 1) newData[currentIndex].times = cols[1]?.trim() || '';
-              } else newData[currentIndex].times = cols[0]?.trim() || '';
-              currentIndex++;
+
+      // 2. วนลูปจับคู่ยา
+      for (let i = 0; i < lines.length; i++) {
+          if (currentIndex >= 10) break; // ถ้าเต็ม 10 ช่องแล้วให้หยุด
+
+          let currentLine = lines[i];
+
+          // ข้ามถ้าเป็นคำว่า +Plan เปล่าๆ
+          if (currentLine === '+Plan') continue;
+
+          // ตัดเครื่องหมายขีด - หน้าชื่อยาออก
+          if (currentLine.startsWith('-')) {
+              currentLine = currentLine.substring(1).trim();
           }
-      });
+
+          // ตัดคำว่า +Plan ออกจากบรรทัด
+          currentLine = currentLine.replace('+Plan', '').trim();
+
+          // 3. จับคู่กับบรรทัดวิธีกิน (ถ้าเป็นการวางในช่องชื่อยา)
+          if (field === 'name' && i + 1 < lines.length && !lines[i + 1].startsWith('-')) {
+              let nextLine = lines[i + 1].replace('+Plan', '').trim();
+              currentLine = `${currentLine} ${nextLine}`;
+              i++; // ข้ามบรรทัดวิธีกินไปเลย เพราะจับรวมไปแล้ว
+          }
+
+          // 4. หยอดข้อมูลลงช่อง
+          if (field === 'name') {
+              newData[currentIndex].name = currentLine;
+          } else {
+              newData[currentIndex].times = currentLine;
+          }
+
+          currentIndex++;
+      }
+
       setBulkFormData(newData);
   };
 
