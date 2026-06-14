@@ -111,7 +111,7 @@ const SEED_MEDS = [
   },
   {
     barcode: "-",
-    name: "DTX: เจาะน้ำตาลปลายนิ้ว",
+    name: "DTX",
     detail: "เจาะน้ำตาลปลายนิ้ว",
     instruction: "",
     times: [6, 12, 18, 24], 
@@ -134,17 +134,15 @@ const getLocalDateString = (dateObj) => {
 
 const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     let minDate = new Date();
-    minDate.setDate(minDate.getDate() - 1); // ค่าเริ่มต้นคือเมื่อวาน
+    minDate.setDate(minDate.getDate() - 1); 
     minDate.setHours(0,0,0,0);
 
-    // 1. ดึงตารางตั้งแต่วันที่รับผู้ป่วย (Admit)
     if (patient && patient.createdAt) {
         const ptDate = new Date(patient.createdAt);
         ptDate.setHours(0,0,0,0);
         if (ptDate < minDate) minDate = ptDate;
     }
 
-    // 2. ดึงตารางให้ครอบคลุมประวัติการให้ยาเก่าๆ
     if (logs && logs.length > 0) {
         logs.forEach(l => {
             if (l.dateKey) {
@@ -155,20 +153,18 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
         });
     }
 
-    // 3. ดึงตารางให้คลุมวันที่เลือกลงย้อนหลัง
     if (retroDateStr) {
         const rDate = new Date(retroDateStr);
         rDate.setHours(0,0,0,0);
         if (rDate < minDate) minDate = rDate;
     }
 
-    // ลิมิตย้อนหลังไม่เกิน 30 วัน เพื่อไม่ให้เบราว์เซอร์ค้าง
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 30);
     if (minDate < limitDate) minDate = limitDate;
 
     const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 5); // ล่วงหน้า 5 วัน
+    maxDate.setDate(maxDate.getDate() + 5); 
     maxDate.setHours(0,0,0,0);
 
     const dates = [];
@@ -179,11 +175,19 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     }
     return dates;
 };
+
+const formatDateThai = (date) => {
+  const months = [
+    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+  ];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear() + 543}`;
+};
+
 const formatTime = (date) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 };
 
-// ตัวอ่าน CSV แบบแม่นยำสูง
 const parseCSVData = (csv) => {
     let rows = [];
     let row = [];
@@ -224,10 +228,8 @@ const DRUG_GROUPS = {
 
 const checkAllergyConflict = (newDrugName, patientAllergies) => {
   if (!patientAllergies || patientAllergies === '-' || patientAllergies.trim() === '') return null;
-
   const allergies = patientAllergies.split(',').map(a => a.trim().toLowerCase());
   const newDrug = newDrugName.toLowerCase();
-
   for (let allergy of allergies) {
     if (newDrug.includes(allergy) || allergy.includes(newDrug)) {
        return allergy;
@@ -253,13 +255,12 @@ export default function App() {
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          // หาก Custom Token ของระบบเดิมใช้ไม่ได้ (เพราะเปลี่ยนโปรเจกต์) ให้ Fallback ไปใช้ Anonymous
           await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
         } else {
           await signInAnonymously(auth);
         }
       } catch (error) {
-        console.error("Firebase Auth Error: กรุณาเปิด Anonymous Authentication ใน Firebase Console", error);
+        console.error("Firebase Auth Error", error);
       }
     };
     initAuth();
@@ -295,7 +296,7 @@ export default function App() {
           background-size: 400% 400%;
           animation: gradient-xy 15s ease infinite;
       }
-      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -920,7 +921,7 @@ function MainLayout({ firebaseUser, currentUser, onLogout }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-gray-800 truncate text-[15px]">{p.name}</div>
-                    <div className="text-xs text-gray-500 font-medium truncate mt-0.5">HN: {p.hn}</div>
+                    <div className="text-xs text-gray-500 font-medium truncate mt-0.5">HN: {padHN(p.hn)}</div>
                   </div>
                   <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)] animate-pulse"></div>
                 </button>
@@ -1086,7 +1087,7 @@ function MainLayout({ firebaseUser, currentUser, onLogout }) {
 }
 
 // ============================================================
-// --- ACTION FLOW VIEW (ปรับปรุงระบบพิมพ์ PDF ให้เหมือน MedSheet) ---
+// --- ACTION FLOW VIEW ---
 // ============================================================
 function ActionFlowView({ patients, meds, logs, showAlert }) {
     const [shift, setShift] = useState('morning'); 
@@ -1211,7 +1212,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                     <td rowSpan={subTableRows.length} style={{ border: '1px solid black', padding: '8px', verticalAlign: 'top', textAlign: 'center' }}>
                                                         <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{patient.bed}</div>
                                                         <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>{patient.name}</div>
-                                                        <div style={{ fontSize: '12px' }}>HN: {patient.hn}</div>
+                                                        <div style={{ fontSize: '12px' }}>HN: {padHN(patient.hn)}</div>
                                                     </td>
                                                 )}
                                                 <td style={{ border: '1px solid black', padding: '8px', fontWeight: 'bold', verticalAlign: 'top' }}>{row.label}</td>
@@ -1219,7 +1220,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                 {rIdx === 0 && (
                                                     <td rowSpan={subTableRows.length} style={{ border: '1px solid black', padding: '8px', verticalAlign: 'top', textAlign: 'center', position: 'relative' }}>
                                                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-                                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${padHN(patient.hn)}`} alt="QR Code" className="w-8 h-8 md:w-10 md:h-10 p-0.5 bg-white border border-gray-200 rounded shadow-sm shrink-0" title={`QR Code: ${padHN(patient.hn)}`} />
+                                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${padHN(patient.hn)}`} alt="QR Code" style={{ width: '45px', height: '45px', mixBlendMode: 'multiply', border: '1px solid black', padding: '2px' }} />
                                                          </div>
                                                     </td>
                                                 )}
@@ -1256,7 +1257,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                         <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>{patient.bed}</td>
                                         <td style={{ border: '1px solid black', padding: '8px', verticalAlign: 'top' }}>
                                             <div style={{ fontWeight: 'bold' }}>{patient.name}</div>
-                                            <div style={{ fontSize: '10px', color: '#4b5563' }}>HN: {patient.hn}</div>
+                                            <div style={{ fontSize: '10px', color: '#4b5563' }}>HN: {padHN(patient.hn)}</div>
                                         </td>
                                         <td style={{ border: '1px solid black', padding: '8px', verticalAlign: 'top' }}>
                                             {meds.filter(m => m.patientId === patient.id && m.isIVF && m.status === 'active').map(ivfMed => (
@@ -1421,7 +1422,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                                     <div className="text-[54px] font-black text-indigo-900 leading-none mb-3 tracking-tighter">{patient.bed}</div>
                                                                     <div className="font-bold text-[14px] text-gray-800 leading-tight px-1 mb-4">{patient.name}</div>
                                                                     <div className="w-[85%] border-t border-gray-300 pt-3 mx-auto">
-                                                                        <div className="text-[12px] font-black text-gray-500">HN: {patient.hn}</div>
+                                                                        <div className="text-[12px] font-black text-gray-500">HN: {padHN(patient.hn)}</div>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -1434,7 +1435,6 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                         </td>
                                                         {rIdx === 0 && (
                                                             <td rowSpan={subTableRows.length} className="p-2 align-top bg-white relative">
-                                                                {/* Optional UI elements can go here */}
                                                             </td>
                                                         )}
                                                     </tr>
@@ -1484,7 +1484,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                     {/* ชื่อ */}
                                                     <td style={{ border: '1px solid #e2e8f0', background: 'white', padding: '10px', verticalAlign: 'top', position: 'sticky', left: '50px', zIndex: 20 }}>
                                                         <div style={{ fontWeight: '900', fontSize: '14px', color: '#1e293b' }}>{patient.name}</div>
-                                                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>HN: {patient.hn}</div>
+                                                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>HN: {padHN(patient.hn)}</div>
                                                     </td>
                                                     {/* IVF */}
                                                     <td style={{ border: '1px solid #e2e8f0', padding: '8px', verticalAlign: 'top', background: 'white' }}>
@@ -1760,20 +1760,20 @@ const dateRange = useMemo(() => {
       e.preventDefault();
       const medsToSave = [];
       const addToList = (namePrefix, value, timesStr = '') => {
-      if (!value) return;
-      
-      // เช็คว่าหัวข้อกับรายละเอียดเป็นคำเดียวกันหรือไม่ ถ้าใช่ให้แสดงแค่คำเดียว
-      let finalName = value;
-      if (namePrefix && namePrefix.toLowerCase() !== value.toLowerCase()) {
-          finalName = `${namePrefix}: ${value}`;
-      }
+        if (!value) return;
+        
+        let finalName = value;
+        if (namePrefix && namePrefix.toLowerCase() !== value.toLowerCase()) {
+            finalName = `${namePrefix}: ${value}`;
+        }
 
-      medsToSave.push({
-          patientId: patient.id, barcode: '-', name: finalName,
-          detail: value, instruction: '', times: timesStr ? timesStr.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n)) : [],
-          type: 'medcard', status: 'active', isHAD: false
-      });
-  };
+        medsToSave.push({
+            patientId: patient.id, barcode: '-', name: finalName,
+            detail: value, instruction: '', times: timesStr ? timesStr.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n)) : [],
+            type: 'medcard', status: 'active', isHAD: false
+        });
+      };
+
       if (medcardForm.record) addToList('Record', medcardForm.record);
       if (medcardForm.dtx) addToList('DTX', medcardForm.dtx, medcardForm.dtxTime);
       if (medcardForm.hct) addToList('HCT', medcardForm.hct, medcardForm.hctTime);
@@ -1870,13 +1870,13 @@ const dateRange = useMemo(() => {
             <div className="min-w-0 flex-1">
                <h1 className="text-xl md:text-3xl font-black text-gray-800 flex items-center gap-3 truncate drop-shadow-sm">
                  {patient.name}
-                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${patient.hn || '00000'}`} alt="QR Code" className="w-8 h-8 md:w-10 md:h-10 p-0.5 bg-white border border-gray-200 rounded shadow-sm shrink-0" title={`QR Code: ${patient.hn}`} />
+                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${padHN(patient.hn)}`} alt="QR Code" className="w-8 h-8 md:w-10 md:h-10 p-0.5 bg-white border border-gray-200 rounded shadow-sm shrink-0" title={`QR Code: ${padHN(patient.hn)}`} />
                  <button onClick={() => setShowEditPatientModal(true)} className="text-gray-500 hover:text-blue-600 p-1.5 rounded-full hover:bg-gray-100 transition print:hidden bg-white shadow-sm border border-gray-200" title="แก้ไขประวัติผู้ป่วย">
                     <Edit3 size={18}/>
                  </button>
                </h1>
                <div className="text-sm md:text-base text-gray-700 flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-2">
-                 <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">HN: <span className="text-blue-700">{padHN(patient.hn)}</span>
+                 <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">HN: <span className="text-blue-700">{padHN(patient.hn)}</span></span>
                  <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">AN: <span className="text-blue-700">{patient.an}</span></span>
                  {patient.diagnosis && (
                      <span className="hidden md:inline-flex text-green-800 font-black max-w-[200px] md:max-w-[300px] truncate bg-green-50 px-2 py-0.5 rounded border border-green-100" title={patient.diagnosis}>{patient.diagnosis}</span>
@@ -1955,7 +1955,7 @@ const dateRange = useMemo(() => {
           <div className="overflow-auto h-full no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             
           {activeTab === 'medcard' ? (
-             <div className="bg-white h-full overflow-y-auto">
+             <div className="bg-white h-full overflow-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                  <table className="w-full text-left border-collapse">
                     <thead className="bg-purple-50 border-b border-purple-200 sticky top-0 z-10 text-purple-900 font-black shadow-sm">
                        <tr>
@@ -2298,7 +2298,7 @@ const dateRange = useMemo(() => {
                      <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">เลือกวันที่ย้อนหลัง</label>
                         <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
-                     <div>
+                     </div>
                     <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">ระบุเวลาที่ต้องการบันทึก <span className="text-red-500">*</span></label>
                          <input type="time" value={retroTime} onChange={e => setRetroTime(e.target.value)} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-2xl text-center text-amber-700 outline-none focus:ring-2 focus:ring-amber-500" />
@@ -2406,7 +2406,7 @@ function PrintTemplate({ id, title, patient, meds, logs, dateRange }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', border: '1px solid #000', padding: '10px', borderRadius: '4px', backgroundColor: '#f9fafb' }}>
            <div style={{ color: '#000' }}>
               <div style={{ fontSize: '14px', marginBottom: '4px' }}><b>ชื่อ:</b> {patient.name}</div>
-              <div style={{ fontSize: '14px', marginBottom: '4px' }}><b>HN:</b> {patient.hn}  <b style={{marginLeft: '10px'}}>AN:</b> {patient.an}</div>
+              <div style={{ fontSize: '14px', marginBottom: '4px' }}><b>HN:</b> {padHN(patient.hn)}  <b style={{marginLeft: '10px'}}>AN:</b> {patient.an}</div>
               <div style={{ fontSize: '14px' }}><b>เตียง:</b> {patient.bed} <b style={{marginLeft: '10px'}}>ตึก:</b> {patient.ward}</div>
            </div>
            <div style={{ textAlign: 'right' }}>
@@ -2580,7 +2580,7 @@ function BedMapView({ patients, meds, logs, onSelectPatient, onAdmitToBed }) {
                           </div>
                           <div className="mt-auto">
                              <div className="font-black text-gray-800 text-[13px] md:text-[15px] leading-tight line-clamp-2">{patient.name}</div>
-                             <div className="text-[10px] md:text-xs text-gray-600 mt-1 md:mt-1.5 font-bold bg-white/80 inline-block px-2 py-0.5 rounded-lg border border-gray-100">HN: {patient.hn}</div>
+                             <div className="text-[10px] md:text-xs text-gray-600 mt-1 md:mt-1.5 font-bold bg-white/80 inline-block px-2 py-0.5 rounded-lg border border-gray-100">HN: {padHN(patient.hn)}</div>
                           </div>
                        </div>
                     );
@@ -2633,11 +2633,12 @@ function NewPatientForm({ initialBed = '', onAdd, onAddMultiple, onCancel, showA
         if (csvText.trim().toLowerCase().startsWith('<!doctype html>') || csvText.toLowerCase().includes('<html')) throw new Error("ไฟล์ติดสิทธิ์การเข้าถึง");
         const rows = parseCSVData(csvText);
         const newPatients = [];
-        const currentHns = new Set(activePatients.map(p => p.hn));
+        const currentHns = new Set(activePatients.map(p => padHN(p.hn)));
         for (let i = 1; i < rows.length; i++) {
             const cols = rows[i];
             if (!cols || cols.length < 3) continue;
-            const hn = (cols[26] || '').trim();
+            let hn = (cols[26] || '').trim();
+            if (hn) hn = padHN(hn);
             const bedA = (cols[0] || '').trim();
             const bedB = (cols[1] || '').trim();
             let bed = '';
@@ -2682,7 +2683,7 @@ function NewPatientForm({ initialBed = '', onAdd, onAddMultiple, onCancel, showA
             else if (sheetBedA && sheetBedA.length <= 5) parsedBed = sheetBedA;
             if (/^\d$/.test(parsedBed)) parsedBed = '0' + parsedBed;
             if (parsedBed === searchBed || sheetBedA === searchBed || sheetBedB === searchBed) {
-                foundData = { an: (cols[2] || '').trim(), name: (cols[3] || '').trim(), diagnosis: (cols[4] || '').trim(), doctor: (cols[25] || '').trim(), hn: (cols[26] || '').trim() };
+                foundData = { an: (cols[2] || '').trim(), name: (cols[3] || '').trim(), diagnosis: (cols[4] || '').trim(), doctor: (cols[25] || '').trim(), hn: padHN((cols[26] || '').trim()) };
                 break;
             }
         }
@@ -2696,7 +2697,7 @@ function NewPatientForm({ initialBed = '', onAdd, onAddMultiple, onCancel, showA
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAdd({ hn: formData.hn, an: formData.an, name: formData.name, bed: formData.bed, ward: formData.ward, allergies: formData.allergies || '-', diagnosis: formData.diagnosis || '', doctor: formData.doctor || '', hospital: "โรงพยาบาลคอนสาร", status: "admitted" });
+    onAdd({ hn: padHN(formData.hn), an: formData.an, name: formData.name, bed: formData.bed, ward: formData.ward, allergies: formData.allergies || '-', diagnosis: formData.diagnosis || '', doctor: formData.doctor || '', hospital: "โรงพยาบาลคอนสาร", status: "admitted" });
     onCancel();
   };
 
@@ -2756,7 +2757,7 @@ function EditPatientModal({ patient, onUpdate, onDelete, onCancel }) {
     let dischargeDate = patient.dischargeDate;
     if (newStatus === 'discharged' && patient.status !== 'discharged') dischargeDate = new Date().toLocaleDateString('th-TH');
     else if (newStatus === 'admitted') dischargeDate = null;
-    onUpdate(patient.id, { hn: fd.get('hn'), an: fd.get('an'), name: fd.get('name'), bed: fd.get('bed'), ward: fd.get('ward'), allergies: fd.get('allergies') || '-', diagnosis: fd.get('diagnosis') || '', doctor: fd.get('doctor') || '', status: newStatus, dischargeDate });
+    onUpdate(patient.id, { hn: padHN(fd.get('hn')), an: fd.get('an'), name: fd.get('name'), bed: fd.get('bed'), ward: fd.get('ward'), allergies: fd.get('allergies') || '-', diagnosis: fd.get('diagnosis') || '', doctor: fd.get('doctor') || '', status: newStatus, dischargeDate });
     onCancel();
   };
   return (
@@ -2773,7 +2774,7 @@ function EditPatientModal({ patient, onUpdate, onDelete, onCancel }) {
              </div>
              <div className="grid grid-cols-3 gap-5">
                 <div className="col-span-1"><label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">เลขเตียง</label><input required name="bed" defaultValue={patient.bed} className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-xl outline-none font-bold text-gray-800 text-center text-lg focus:ring-2 focus:ring-blue-500"/></div>
-                <div className="col-span-2"><label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">HN</label><input required name="hn" defaultValue={patient.hn} className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-xl outline-none font-bold text-gray-800 text-lg focus:ring-2 focus:ring-blue-500"/></div>
+                <div className="col-span-2"><label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">HN</label><input required name="hn" defaultValue={padHN(patient.hn)} className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-xl outline-none font-bold text-gray-800 text-lg focus:ring-2 focus:ring-blue-500"/></div>
              </div>
              <div><label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">ชื่อ-นามสกุล</label><input required name="name" defaultValue={patient.name} className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-xl outline-none font-black text-gray-800 text-lg focus:ring-2 focus:ring-blue-500"/></div>
              <div><label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">Diagnosis</label><input name="diagnosis" defaultValue={patient.diagnosis} className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-xl outline-none font-bold text-gray-800 focus:ring-2 focus:ring-blue-500"/></div>
