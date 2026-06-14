@@ -121,6 +121,17 @@ const SEED_MEDS = [
 ];
 
 // --- UTILS ---
+const padHN = (hn) => {
+  if (!hn || hn === '-' || hn === '0') return '0000000';
+  return String(hn).trim().padStart(7, '0');
+};
+
+const getLocalDateString = (dateObj) => {
+  const d = new Date(dateObj);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
+};
+
 const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     let minDate = new Date();
     minDate.setDate(minDate.getDate() - 1); // ค่าเริ่มต้นคือเมื่อวาน
@@ -168,14 +179,6 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     }
     return dates;
 };
-const formatDateThai = (date) => {
-  const months = [
-    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
-  ];
-  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear() + 543}`;
-};
-
 const formatTime = (date) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 };
@@ -1216,7 +1219,7 @@ function ActionFlowView({ patients, meds, logs, showAlert }) {
                                                 {rIdx === 0 && (
                                                     <td rowSpan={subTableRows.length} style={{ border: '1px solid black', padding: '8px', verticalAlign: 'top', textAlign: 'center', position: 'relative' }}>
                                                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-                                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${patient.hn || '00000'}`} alt="QR Code" style={{ width: '45px', height: '45px', mixBlendMode: 'multiply', border: '1px solid black', padding: '2px' }} />
+                                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${padHN(patient.hn)}`} alt="QR Code" className="w-8 h-8 md:w-10 md:h-10 p-0.5 bg-white border border-gray-200 rounded shadow-sm shrink-0" title={`QR Code: ${padHN(patient.hn)}`} />
                                                          </div>
                                                     </td>
                                                 )}
@@ -1873,7 +1876,7 @@ const dateRange = useMemo(() => {
                  </button>
                </h1>
                <div className="text-sm md:text-base text-gray-700 flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-2">
-                 <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">HN: <span className="text-blue-700">{patient.hn}</span></span>
+                 <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">HN: <span className="text-blue-700">{padHN(patient.hn)}</span>
                  <span className="hidden md:inline-flex bg-white px-3 py-1 rounded-lg font-bold shadow-sm border border-gray-200">AN: <span className="text-blue-700">{patient.an}</span></span>
                  {patient.diagnosis && (
                      <span className="hidden md:inline-flex text-green-800 font-black max-w-[200px] md:max-w-[300px] truncate bg-green-50 px-2 py-0.5 rounded border border-green-100" title={patient.diagnosis}>{patient.diagnosis}</span>
@@ -1949,7 +1952,7 @@ const dateRange = useMemo(() => {
 
       <div className="flex-1 overflow-hidden px-1 pb-1 md:px-8 md:pb-8 print:p-0 print:overflow-visible relative z-10">
         <div className="bg-white rounded-t-2xl md:rounded-3xl overflow-hidden shadow-lg h-full print:shadow-none print:border-black print:rounded-none relative print:bg-white border-t border-x md:border border-gray-200">
-          <div className="overflow-x-auto h-full no-scrollbar">
+          <div className="overflow-auto h-full no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             
           {activeTab === 'medcard' ? (
              <div className="bg-white h-full overflow-y-auto">
@@ -2294,9 +2297,9 @@ const dateRange = useMemo(() => {
                      <p className="text-sm font-bold text-gray-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">เมื่อตั้งค่าแล้ว การคลิกช่องเวลาในตารางทั้งหมด จะใช้เวลาที่คุณเลือกนี้ทันที</p>
                      <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">เลือกวันที่ย้อนหลัง</label>
-                         <input type="date" value={retroDate || new Date().toISOString().split('T')[0]} onChange={e => setRetroDate(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
-                     </div>
+                        <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
                      <div>
+                    <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">ระบุเวลาที่ต้องการบันทึก <span className="text-red-500">*</span></label>
                          <input type="time" value={retroTime} onChange={e => setRetroTime(e.target.value)} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-2xl text-center text-amber-700 outline-none focus:ring-2 focus:ring-amber-500" />
                      </div>
