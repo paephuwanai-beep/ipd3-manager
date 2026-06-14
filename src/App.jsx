@@ -121,17 +121,53 @@ const SEED_MEDS = [
 ];
 
 // --- UTILS ---
-const generateDateRange = () => {
-  const dates = [];
-  const start = new Date();
-  for (let i = -1; i <= 5; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    dates.push(d);
-  }
-  return dates;
-};
+const generateDynamicDateRange = (patient, logs, retroDateStr) => {
+    let minDate = new Date();
+    minDate.setDate(minDate.getDate() - 1); // ค่าเริ่มต้นคือเมื่อวาน
+    minDate.setHours(0,0,0,0);
 
+    // 1. ดึงตารางตั้งแต่วันที่รับผู้ป่วย (Admit)
+    if (patient && patient.createdAt) {
+        const ptDate = new Date(patient.createdAt);
+        ptDate.setHours(0,0,0,0);
+        if (ptDate < minDate) minDate = ptDate;
+    }
+
+    // 2. ดึงตารางให้ครอบคลุมประวัติการให้ยาเก่าๆ
+    if (logs && logs.length > 0) {
+        logs.forEach(l => {
+            if (l.dateKey) {
+                const lDate = new Date(l.dateKey);
+                lDate.setHours(0,0,0,0);
+                if (lDate < minDate) minDate = lDate;
+            }
+        });
+    }
+
+    // 3. ดึงตารางให้คลุมวันที่เลือกลงย้อนหลัง
+    if (retroDateStr) {
+        const rDate = new Date(retroDateStr);
+        rDate.setHours(0,0,0,0);
+        if (rDate < minDate) minDate = rDate;
+    }
+
+    // ลิมิตย้อนหลังไม่เกิน 30 วัน เพื่อไม่ให้เบราว์เซอร์ค้าง
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 30);
+    if (minDate < limitDate) minDate = limitDate;
+
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 5); // ล่วงหน้า 5 วัน
+    maxDate.setHours(0,0,0,0);
+
+    const dates = [];
+    let curr = new Date(minDate);
+    while (curr <= maxDate) {
+        dates.push(new Date(curr));
+        curr.setDate(curr.getDate() + 1);
+    }
+    return dates;
+};
 const formatDateThai = (date) => {
   const months = [
     "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -1547,8 +1583,10 @@ function MedSheet({
       hc2: '', hc5: '', note: ''
   };
   const [medcardForm, setMedcardForm] = useState(initialMedcardForm);
-
-  const dateRange = useMemo(() => generateDateRange(), []);
+  
+const dateRange = useMemo(() => {
+    return generateDynamicDateRange(patient, logs, retroMode ? retroDate : null);
+}, [patient, logs, retroMode, retroDate]);
 
   const sortedMeds = useMemo(() => {
     return meds.filter(m => m.type === activeTab).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
@@ -1719,13 +1757,20 @@ function MedSheet({
       e.preventDefault();
       const medsToSave = [];
       const addToList = (namePrefix, value, timesStr = '') => {
-          if (!value) return;
-          medsToSave.push({
-              patientId: patient.id, barcode: '-', name: namePrefix ? `${namePrefix}: ${value}` : value,
-              detail: value, instruction: '', times: timesStr ? timesStr.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n)) : [],
-              type: 'medcard', status: 'active', isHAD: false
-          });
-      };
+      if (!value) return;
+      
+      // เช็คว่าหัวข้อกับรายละเอียดเป็นคำเดียวกันหรือไม่ ถ้าใช่ให้แสดงแค่คำเดียว
+      let finalName = value;
+      if (namePrefix && namePrefix.toLowerCase() !== value.toLowerCase()) {
+          finalName = `${namePrefix}: ${value}`;
+      }
+
+      medsToSave.push({
+          patientId: patient.id, barcode: '-', name: finalName,
+          detail: value, instruction: '', times: timesStr ? timesStr.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n)) : [],
+          type: 'medcard', status: 'active', isHAD: false
+      });
+  };
       if (medcardForm.record) addToList('Record', medcardForm.record);
       if (medcardForm.dtx) addToList('DTX', medcardForm.dtx, medcardForm.dtxTime);
       if (medcardForm.hct) addToList('HCT', medcardForm.hct, medcardForm.hctTime);
