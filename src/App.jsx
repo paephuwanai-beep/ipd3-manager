@@ -140,7 +140,7 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     if (patient && patient.createdAt) {
         const ptDate = new Date(patient.createdAt);
         ptDate.setHours(0,0,0,0);
-        if (ptDate < minDate) minDate = ptDate;
+        if (ptDate < minDate) minDate = new Date(ptDate);
     }
 
     if (logs && logs.length > 0) {
@@ -148,7 +148,7 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
             if (l.dateKey) {
                 const lDate = new Date(l.dateKey);
                 lDate.setHours(0,0,0,0);
-                if (lDate < minDate) minDate = lDate;
+                if (lDate < minDate) minDate = new Date(lDate);
             }
         });
     }
@@ -156,12 +156,13 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     if (retroDateStr) {
         const rDate = new Date(retroDateStr);
         rDate.setHours(0,0,0,0);
-        if (rDate < minDate) minDate = rDate;
+        if (rDate < minDate) minDate = new Date(rDate);
     }
 
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 30);
-    if (minDate < limitDate) minDate = limitDate;
+    limitDate.setHours(0,0,0,0);
+    if (minDate < limitDate) minDate = new Date(limitDate);
 
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 5); 
@@ -379,7 +380,7 @@ function LoginScreen({ onLogin }) {
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transform rotate-3">
           <Activity className="w-10 h-10 md:w-12 md:h-12 text-white transform -rotate-3" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-gray-800 mb-2 tracking-tight">IPD3 Manager</h1>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-800 mb-2 tracking-tight">IPD3 dead & palliative care</h1>
         <p className="text-gray-600 mb-6 font-medium text-sm md:text-base">ระบบ Med Sheet ออนไลน์ (Real-time)</p>
 
         {!isManaging ? (
@@ -664,17 +665,14 @@ function MainLayout({ firebaseUser, currentUser, onLogout }) {
       try {
         const batch = writeBatch(db);
         
-        // ลบข้อมูลยาที่ผูกกับผู้ป่วยนี้
         meds.filter(m => m.patientId === patientId).forEach(m => {
           batch.delete(doc(getColl('meds'), m.id));
         });
         
-        // ลบข้อมูลการลงเวลาที่ผูกกับผู้ป่วยนี้
         logs.filter(l => l.patientId === patientId).forEach(l => {
           batch.delete(doc(getColl('logs'), l.id));
         });
         
-        // ลบรายชื่อผู้ป่วย
         batch.delete(doc(getColl('patients'), patientId));
 
         await batch.commit();
@@ -859,7 +857,7 @@ function MainLayout({ firebaseUser, currentUser, onLogout }) {
           <div>
             <h2 className="font-black text-xl text-gray-800 flex items-center gap-2">
                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-1.5 rounded-lg shadow-sm"><BedDouble size={20}/></div>
-               IPD3 Manager
+               IPD3 dead & palliative care
             </h2>
             <div className="text-xs text-gray-600 mt-1.5 flex items-center gap-1.5 font-bold bg-white px-2 py-1 rounded-md inline-flex border border-gray-200 shadow-sm">
               <User size={12} className="text-blue-600"/> {currentUser}
@@ -1571,7 +1569,7 @@ function MedSheet({
   
   const [retroMode, setRetroMode] = useState(false);
   const [retroTime, setRetroTime] = useState("");
-  const [retroDate, setRetroDate] = useState("");
+  const [retroDate, setRetroDate] = useState(getLocalDateString(new Date()));
   const [showRetroModal, setShowRetroModal] = useState(false);
 
   const initialBulkData = Array.from({ length: 10 }, () => ({ name: '', times: '' }));
@@ -2173,7 +2171,7 @@ const dateRange = useMemo(() => {
                                  <tr key={index} className="border-b border-gray-200 last:border-0 hover:bg-gray-50 transition-colors">
                                      <td className="p-2 md:p-3 text-center text-gray-400 font-bold bg-gray-50 border-r border-gray-300 text-xs md:text-sm">{index + 1}</td>
                                      <td className="p-2 md:p-3 border-r border-gray-300">
-                                         <input value={row.name} onChange={(e) => { const newData = [...bulkFormData]; newData[index].name = e.target.value; setBulkFormData(newData); }} onPaste={(e) => handlePasteToBulk(e, index, 'name')} className={`w-full p-2 rounded-lg outline-none text-sm md:text-base font-bold text-gray-800 placeholder-gray-300 bg-white border border-gray-200 focus:ring-2 transition-all ${activeTab === 'injection' ? 'focus:ring-red-500' : 'focus:ring-green-500'}`} placeholder="วางข้อมูลที่นี่..." />
+                                         <textarea rows="2" value={row.name} onChange={(e) => { const newData = [...bulkFormData]; newData[index].name = e.target.value; setBulkFormData(newData); }} onPaste={(e) => handlePasteToBulk(e, index, 'name')} className={`w-full p-2 rounded-lg outline-none text-sm md:text-base font-bold text-gray-800 placeholder-gray-300 bg-white border border-gray-200 focus:ring-2 transition-all resize-none ${activeTab === 'injection' ? 'focus:ring-red-500' : 'focus:ring-green-500'}`} placeholder="วางข้อมูลที่นี่..." />
                                      </td>
                                      <td className="p-2 md:p-3">
                                          <input list="common-med-times" value={row.times} onChange={(e) => { const newData = [...bulkFormData]; newData[index].times = e.target.value; setBulkFormData(newData); }} onPaste={(e) => handlePasteToBulk(e, index, 'times')} className={`w-full p-2 rounded-lg outline-none text-sm md:text-base font-bold text-gray-800 placeholder-gray-300 bg-white border border-gray-200 focus:ring-2 transition-all ${activeTab === 'injection' ? 'focus:ring-red-500' : 'focus:ring-green-500'}`} placeholder="เวลา" />
@@ -2297,7 +2295,7 @@ const dateRange = useMemo(() => {
                      <p className="text-sm font-bold text-gray-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">เมื่อตั้งค่าแล้ว การคลิกช่องเวลาในตารางทั้งหมด จะใช้เวลาที่คุณเลือกนี้ทันที</p>
                      <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">เลือกวันที่ย้อนหลัง</label>
-                        <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} min={getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 30)))} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
                      </div>
                     <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">ระบุเวลาที่ต้องการบันทึก <span className="text-red-500">*</span></label>
@@ -2329,7 +2327,7 @@ const dateRange = useMemo(() => {
               <form onSubmit={handleEditMedSubmit} className="p-6 space-y-5 bg-gray-50">
                  <div>
                    <label className="block text-sm font-black text-gray-700 mb-1.5 ml-1">ชื่อรายการ <span className="text-red-500">*</span></label>
-                   <input required name="name" defaultValue={editingMed.name} className={`w-full bg-white border border-gray-300 px-4 py-3 rounded-xl font-black text-gray-800 text-lg outline-none focus:ring-2 ${activeTab === 'injection' ? 'focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                   <textarea rows="2" required name="name" defaultValue={editingMed.name} className={`w-full bg-white border border-gray-300 px-4 py-3 rounded-xl font-black text-gray-800 text-lg outline-none focus:ring-2 resize-none ${activeTab === 'injection' ? 'focus:ring-red-500' : 'focus:ring-green-500'}`} />
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2632,26 +2630,64 @@ function NewPatientForm({ initialBed = '', onAdd, onAddMultiple, onCancel, showA
         const csvText = await response.text();
         if (csvText.trim().toLowerCase().startsWith('<!doctype html>') || csvText.toLowerCase().includes('<html')) throw new Error("ไฟล์ติดสิทธิ์การเข้าถึง");
         const rows = parseCSVData(csvText);
-        const newPatients = [];
-        const currentHns = new Set(activePatients.map(p => padHN(p.hn)));
+        
+        const sheetPatients = [];
         for (let i = 1; i < rows.length; i++) {
             const cols = rows[i];
             if (!cols || cols.length < 3) continue;
             let hn = (cols[26] || '').trim();
-            if (hn) hn = padHN(hn);
+            if (!hn) continue;
+            hn = padHN(hn);
+            
             const bedA = (cols[0] || '').trim();
             const bedB = (cols[1] || '').trim();
-            let bed = '';
-            if (bedB && bedB.length <= 5) bed = bedB;
-            else if (bedA && bedA.length <= 5) bed = bedA;
+            let bed = bedB && bedB.length <= 5 ? bedB : (bedA && bedA.length <= 5 ? bedA : '');
             if (/^\d$/.test(bed)) bed = '0' + bed;
-            if (hn && bed && !currentHns.has(hn)) { 
-                newPatients.push({ hn, an: (cols[2] || '').trim(), name: (cols[3] || '').trim(), bed, ward: "ผู้ป่วยในชาย", allergies: '-', diagnosis: (cols[4] || '').trim(), doctor: (cols[25] || '').trim(), hospital: "โรงพยาบาลคอนสาร", status: "admitted" });
-                currentHns.add(hn);
+            
+            if (hn && bed) {
+                sheetPatients.push({ 
+                    hn, an: (cols[2] || '').trim(), name: (cols[3] || '').trim(), 
+                    bed, ward: "ผู้ป่วยในชาย", allergies: '-', 
+                    diagnosis: (cols[4] || '').trim(), doctor: (cols[25] || '').trim() 
+                });
             }
         }
-        if (newPatients.length > 0) onAddMultiple(newPatients);
-        else if(showAlert) showAlert("ข้อมูลเป็นปัจจุบันแล้ว (ไม่มีผู้ป่วยใหม่ให้ซิงค์)");
+
+        const batch = writeBatch(db);
+        const todayStr = new Date().toLocaleDateString('th-TH');
+        let addedCount = 0;
+        let updatedCount = 0;
+        let dischargedCount = 0;
+
+        const sheetHnMap = new Map(sheetPatients.map(p => [p.hn, p]));
+        const activeDbPatients = activePatients;
+
+        activeDbPatients.forEach(dbPat => {
+            const dbHn = padHN(dbPat.hn);
+            const sheetMatch = sheetHnMap.get(dbHn);
+            
+            if (!sheetMatch) {
+                const docRef = doc(getColl('patients'), dbPat.id);
+                batch.update(docRef, { status: 'discharged', dischargeDate: todayStr });
+                dischargedCount++;
+            } else {
+                if (dbPat.bed !== sheetMatch.bed || dbPat.name !== sheetMatch.name || dbPat.diagnosis !== sheetMatch.diagnosis) {
+                    const docRef = doc(getColl('patients'), dbPat.id);
+                    batch.update(docRef, { bed: sheetMatch.bed, name: sheetMatch.name, diagnosis: sheetMatch.diagnosis });
+                    updatedCount++;
+                }
+                sheetHnMap.delete(dbHn);
+            }
+        });
+
+        sheetHnMap.forEach(newPat => {
+            const docRef = doc(getColl('patients'));
+            batch.set(docRef, { ...newPat, hospital: "โรงพยาบาลคอนสาร", status: "admitted", createdAt: new Date().toISOString() });
+            addedCount++;
+        });
+
+        await batch.commit();
+        if(showAlert) showAlert(`ซิงค์ข้อมูลสำเร็จ: เพิ่มใหม่ ${addedCount} | อัปเดตเตียง ${updatedCount} | จำหน่าย ${dischargedCount}`);
     } catch (error) {
         console.error("Sync error:", error);
         if(showAlert) showAlert("เกิดข้อผิดพลาดในการซิงค์: " + error.message);
