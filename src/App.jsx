@@ -160,7 +160,7 @@ const generateDynamicDateRange = (patient, logs, retroDateStr) => {
     }
 
     const limitDate = new Date();
-    limitDate.setDate(limitDate.getDate() - 30);
+    limitDate.setDate(limitDate.getDate() - 1); // ⚠️ แก้ไข: ให้จำกัดย้อนหลังสูงสุดแค่ 1 วัน
     limitDate.setHours(0,0,0,0);
     if (minDate < limitDate) minDate = new Date(limitDate);
 
@@ -2287,7 +2287,7 @@ const dateRange = useMemo(() => {
                      <p className="text-sm font-bold text-gray-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">เมื่อตั้งค่าแล้ว การคลิกช่องเวลาในตารางทั้งหมด จะใช้เวลาที่คุณเลือกนี้ทันที</p>
                      <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">เลือกวันที่ย้อนหลัง</label>
-                        <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} min={getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 30)))} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="date" value={retroDate || getLocalDateString(new Date())} onChange={e => setRetroDate(e.target.value)} max={getLocalDateString(new Date())} min={getLocalDateString(new Date(new Date().setDate(new Date().getDate() - 1)))} className="w-full bg-white border border-gray-300 p-3 rounded-xl font-black text-gray-800 outline-none focus:ring-2 focus:ring-amber-500" />
                      </div>
                     <div>
                          <label className="block text-sm font-black text-gray-700 mb-2">ระบุเวลาที่ต้องการบันทึก <span className="text-red-500">*</span></label>
